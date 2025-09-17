@@ -20,88 +20,13 @@ const int pin4 = 4;
 const int PINA0 = A0;
 const int PINA1 = A1;
 
+bool lastBlockedLeft = false;
+bool lastBlockedRight = false;
 
-// ---- Arming switch setup ----
-const int armButtonPin = 7;   // Button pin (connect to GND when pressed)
-bool armed = false;           // System state
-bool lastButtonState = HIGH;  // Track button state
+unsigned long driveStartTime = 0;
+bool timedDriveActive = false;
 
-void setup() {
-  Serial.begin(9600);
-  bluetooth.begin(9600);
-
-  pinMode(PIN13, OUTPUT);
-  pinMode(PIN12, OUTPUT);
-  pinMode(PIN11, OUTPUT);
-  pinMode(PIN10, OUTPUT);
-  pinMode(pin4, OUTPUT);
-
-  analogWrite(PIN9, 250);
-  digitalWrite(pin6, HIGH);
-
-  pinMode(PINA1, INPUT);
-  pinMode(PINA0, INPUT);
-
-  pinMode(armButtonPin, INPUT_PULLUP); // momentary push button
-  pinMode(LED_BUILTIN, OUTPUT);        // indicator LED
-}
-
-void loop() {
-  // ---- Handle arming button with delay debounce ----
-  bool buttonState = digitalRead(armButtonPin);
-
-  // Detect press (transition HIGH -> LOW)
-  if (lastButtonState == HIGH && buttonState == LOW) {
-    armed = !armed; // Toggle armed state
-    digitalWrite(LED_BUILTIN, armed ? HIGH : LOW);
-    delay(200); // debounce + simple press delay
-  }
-
-  lastButtonState = buttonState;
-
-  // ---- Bluetooth receive ----
-//  if (bluetooth.available()) {
-//    data = bluetooth.read();
-//    Serial.println(data);
-//  }
-
-  // ---- Read joysticks ----
-  int senH = analogRead(PINA0);
-  int senV = analogRead(PINA1);
- Serial.println(senH);
- Serial.println(senV);
-
-  // ---- Only move if armed ----
-  if (armed) {
-    if (senV < 350) {
-      hoejreBaglens();
-
-    } else {
-      hoejreDrejTil();
-    }
-
-    if (senH < 500) {
-      venstreBaglens();
-    } else {
-      venstreDrejTil();
-    }
-
-    if (senH < 500 && senV < 500) {
-      digitalWrite(pin4, HIGH);
-      hoejreStop();
-      venstreStop();
-      // delay(2000);
-      // venstreDrejTil();
-      // hoejreDrejTil();
-      // delay(2000);
-    }
-  } else {
-    // Disarmed: stop everything
-    hoejreStop();
-    venstreStop();
-    digitalWrite(pin4, LOW);
-  }
-}
+// ---- Function prototypes ----
 
 // ---- Motor functions ----
 void hoejreDrejTil() {
@@ -138,4 +63,95 @@ void venstreBaglens() {
   analogWrite(PIN9, 90);
   digitalWrite(PIN12, HIGH);
   digitalWrite(PIN13, LOW);
+}
+
+// ---- Arming switch setup ----
+const int armButtonPin = 7;   // Button pin (connect to GND when pressed)
+bool armed = false;           // System state
+bool lastButtonState = HIGH;  // Track button state
+
+void setup() {
+  Serial.begin(9600);
+  bluetooth.begin(9600);
+
+  pinMode(PIN13, OUTPUT);
+  pinMode(PIN12, OUTPUT);
+  pinMode(PIN11, OUTPUT);
+  pinMode(PIN10, OUTPUT);
+  pinMode(pin4, OUTPUT);
+
+  analogWrite(PIN9, 250);
+  digitalWrite(pin6, HIGH);
+
+  pinMode(PINA1, INPUT);
+  pinMode(PINA0, INPUT);
+
+  pinMode(armButtonPin, INPUT_PULLUP); // momentary push button
+  pinMode(LED_BUILTIN, OUTPUT);        // indicator LED
+}
+
+void loop() {
+  bool buttonState = digitalRead(armButtonPin);
+
+  // ---- Handle arming button ----
+  if (lastButtonState == HIGH && buttonState == LOW) {
+    armed = !armed;
+    digitalWrite(LED_BUILTIN, armed ? HIGH : LOW);
+    delay(200);
+  }
+  lastButtonState = buttonState;
+
+  // ---- Read sensors ----
+  int senH = analogRead(PINA0); // Left
+  int senV = analogRead(PINA1); // Right
+  Serial.println(senH);
+  Serial.println(senV);
+
+  if (armed) {
+  bool blockedRight = (senV < 350);
+  bool blockedLeft  = (senH < 500);
+
+  // Track last blocked
+  if (blockedRight && !blockedLeft) {
+    lastBlockedRight = true;
+    lastBlockedLeft = false;
+  } else if (blockedLeft && !blockedRight) {
+    lastBlockedLeft = true;
+    lastBlockedRight = false;
+  }
+
+  // ---- Both sensors blocked ----
+  if (blockedRight && blockedLeft) {
+    if (lastBlockedRight) {
+      hoejreBaglens();
+      venstreStop();
+      delay(100);       // run for 100 ms
+      hoejreStop();     // then stop
+    } else if (lastBlockedLeft) {
+      venstreBaglens();
+      hoejreStop();
+      delay(100);       // run for 100 ms
+      venstreStop();    // then stop
+    }
+  } 
+  // ---- Normal behavior ----
+  else {
+    if (blockedRight) {
+      hoejreBaglens();
+    } else {
+      hoejreDrejTil();
+    }
+
+    if (blockedLeft) {
+      venstreBaglens();
+    } else {
+      venstreDrejTil();
+    }
+  }
+} else {
+  // Disarmed → stop
+  hoejreStop();
+  venstreStop();
+  digitalWrite(pin4, LOW);
+}
 }
