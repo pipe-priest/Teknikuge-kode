@@ -14,7 +14,6 @@ const int PIN10 = 10;
 const int PIN9 = 9;
 
 
-
 const int pin6 = 6;
 const int pin4 = 4;
 
@@ -75,19 +74,26 @@ void loop() {
   // ---- Only move if armed ----
   if (armed) {
     if (senV < 350) {
-      hoejreStop();
+      hoejreBaglens();
+
     } else {
       hoejreDrejTil();
     }
 
     if (senH < 500) {
-      venstreStop();
+      venstreBaglens();
     } else {
       venstreDrejTil();
     }
 
     if (senH < 500 && senV < 500) {
       digitalWrite(pin4, HIGH);
+      hoejreStop();
+      venstreStop();
+      // delay(2000);
+      // venstreDrejTil();
+      // hoejreDrejTil();
+      // delay(2000);
     }
   } else {
     // Disarmed: stop everything
@@ -101,23 +107,35 @@ void loop() {
 void hoejreDrejTil() {
   digitalWrite(PIN11, HIGH);
   digitalWrite(PIN10, LOW);
-  analogWrite(pin6,190);
+  analogWrite(pin6,170);
 
 
 }
 void venstreDrejTil() {
   digitalWrite(PIN13, HIGH);
   digitalWrite(PIN12, LOW);
-  analogWrite(PIN9,110);
+  analogWrite(PIN9,90);
  
 }
 void hoejreStop() {
   analogWrite(pin6,255);
-  digitalWrite(PIN10, LOW);
-  digitalWrite(PIN11, LOW);
+  digitalWrite(PIN10, HIGH);
+  digitalWrite(PIN11, HIGH);
 }
 void venstreStop() {
   analogWrite(PIN9, 255);
-  digitalWrite(PIN12, LOW);
+  digitalWrite(PIN12, HIGH);
+  digitalWrite(PIN13, HIGH);
+}
+
+void hoejreBaglens() {
+  analogWrite(pin6,170);
+  digitalWrite(PIN10, HIGH);
+  digitalWrite(PIN11, LOW);
+  
+}
+void venstreBaglens() {
+  analogWrite(PIN9, 90);
+  digitalWrite(PIN12, HIGH);
   digitalWrite(PIN13, LOW);
 }
