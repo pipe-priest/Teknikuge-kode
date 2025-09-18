@@ -11,14 +11,15 @@ const int PIN13 = 13;
 const int PIN12 = 12;
 const int PIN11 = 11;
 const int PIN10 = 10;
-const int PIN9 = 9;
+const int PIN9 = 9; //enable
 
 
-const int pin6 = 6;
-const int pin4 = 4;
+const int pin6 = 6;  
+//Deadmann switch const int pin4 = 4; //kanon
 
 const int PINA0 = A0;
 const int PINA1 = A1;
+const int PINA3 = A3;
 
 bool lastBlockedLeft = false;
 bool lastBlockedRight = false;
@@ -78,13 +79,14 @@ void setup() {
   pinMode(PIN12, OUTPUT);
   pinMode(PIN11, OUTPUT);
   pinMode(PIN10, OUTPUT);
-  pinMode(pin4, OUTPUT);
+  // pinMode(pin4, OUTPUT);
 
   analogWrite(PIN9, 250);
   digitalWrite(pin6, HIGH);
 
   pinMode(PINA1, INPUT);
   pinMode(PINA0, INPUT);
+  pinMode(PINA3, INPUT);
 
   pinMode(armButtonPin, INPUT_PULLUP); // momentary push button
   pinMode(LED_BUILTIN, OUTPUT);        // indicator LED
@@ -104,31 +106,39 @@ void loop() {
   // ---- Read sensors ----
   int senH = analogRead(PINA0); // Left
   int senV = analogRead(PINA1); // Right
-  Serial.println(senH);
-  Serial.println(senV);
+  int senM = analogRead(PINA3);
+  // Serial.println(senH);
+  // Serial.println(senV);
+ // Serial.println(senM);
 
   if (armed) {
   bool blockedRight = (senV < 350);
   bool blockedLeft  = (senH < 500);
+  bool blockedMidle  = (senM > 200);
+  bool allBlocked = blockedRight && blockedLeft && blockedMidle;
 
+  if(blockedMidle){
   // Track last blocked
-  if (blockedRight && !blockedLeft) {
-    lastBlockedRight = true;
-    lastBlockedLeft = false;
-  } else if (blockedLeft && !blockedRight) {
-    lastBlockedLeft = true;
-    lastBlockedRight = false;
+    if (blockedRight && !blockedLeft) {
+      lastBlockedRight = true;
+      lastBlockedLeft = false;
+    }   else if (blockedLeft && !blockedRight) {
+      lastBlockedLeft = true;
+      lastBlockedRight = false;
+    }    
   }
+
 
   // ---- Both sensors blocked ----
   if (blockedRight && blockedLeft) {
     if (lastBlockedRight) {
-      hoejreBaglens();
+      hoejreDrejTil();
+      
       venstreStop();
       delay(100);       // run for 100 ms
       hoejreStop();     // then stop
     } else if (lastBlockedLeft) {
-      venstreBaglens();
+      venstreDrejTil();
       hoejreStop();
       delay(100);       // run for 100 ms
       venstreStop();    // then stop
@@ -152,6 +162,5 @@ void loop() {
   // Disarmed → stop
   hoejreStop();
   venstreStop();
-  digitalWrite(pin4, LOW);
-}
+  // digitalWrite(pin4, LOW);
 }
